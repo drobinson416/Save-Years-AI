@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SaveYears — Minimal Demo</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; max-width: 800px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin-bottom: 8px; }
+    form, .card { border: 1px solid #eee; border-radius: 12px; padding: 16px; margin: 16px 0; }
+    input, select { padding: 8px; border-radius: 8px; border: 1px solid #ddd; width: 100%; margin-top: 6px; }
+    button { padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; }
+    .primary { background: #00BFA6; color: white; }
+    .muted { background: #f2f2f2; }
+    pre { overflow: auto; background: #fafafa; padding: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>SaveYears — Minimal Intake → Plan Demo</h1>
+  <div class="card">
+    <form id="intakeForm">
+      <label>Name<input name="name" required /></label><br><br>
+      <label>Email<input name="email" type="email" required /></label><br><br>
+      <label>Days per week<input name="days_per_week" type="number" value="3" min="1" max="6" required /></label><br><br>
+      <label>Session length (minutes)<input name="session_length_minutes" type="number" value="45" min="15" max="120" required /></label><br><br>
+      <label>Equipment<select name="equipment" multiple>
+        <option value="dumbbells" selected>Dumbbells</option>
+        <option value="kettlebells">Kettlebells</option>
+        <option value="bands">Bands</option>
+        <option value="bodyweight_only">Bodyweight Only</option>
+      </select></label><br><br>
+      <label>Goal<select name="goals">
+        <option value="general_fitness" selected>General Fitness</option>
+        <option value="fat_loss">Fat Loss</option>
+        <option value="muscle_gain">Muscle Gain</option>
+        <option value="strength">Strength</option>
+      </select></label><br><br>
+      <button class="primary" type="submit">Submit Intake</button>
+    </form>
+  </div>
+
+  <div id="result" class="card" style="display:none;"></div>
+
+  <script>
+    const API = "http://127.0.0.1:8000";
+    const form = document.getElementById('intakeForm');
+    const result = document.getElementById('result');
+
+    function getSelectValues(select) {
+      return Array.from(select.selectedOptions).map(o => o.value);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        name: form.name.value,
+        email: form.email.value,
+        days_per_week: parseInt(form.days_per_week.value, 10),
+        session_length_minutes: parseInt(form.session_length_minutes.value, 10),
+        equipment: getSelectValues(form.equipment),
+        goals: form.goals.value
+      };
+
+      // 1) Create intake
+      const res1 = await fetch(API + "/api/intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const intake = await res1.json();
+
+      // 2) Generate plan
+      const res2 = await fetch(API + "/api/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intake_id: intake.intake_id })
+      });
+      const gen = await res2.json();
+
+      // 3) Fetch plan
+      const res3 = await fetch(API + "/api/plans/" + gen.plan_id);
+      const plan = await res3.json();
+
+      result.style.display = "block";
+      result.innerHTML = "<h3>Plan (draft)</h3><pre>" + JSON.stringify(plan, null, 2) + "</pre>";
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+openapi: 3.0.3
+info:
+  title: SaveYears AI Coach API (MVP Defaults)
+  version: "0.1.0"
+servers:
+  - url: http://127.0.0.1:8000
+
+paths:
+  /api/intake:
+    post:
+      summary: Create intake
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntakeRequest'
+      responses:
+        '200':
+          description: Intake created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntakeCreated'
+
+  /api/generate-plan:
+    post:
+      summary: Generate plan from intake
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneratePlanRequest'
+      responses:
+        '200':
+          description: Plan generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanCreated'
+
+  /api/plans/{id}:
+    get:
+      summary: Get plan by id
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      responses:
+        '200':
+          description: Plan JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+
+  /api/plans/{id}/approve:
+    post:
+      summary: Approve a plan
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /api/plans/{id}/pdf:
+    get:
+      summary: Download or link to plan PDF
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      responses:
+        '200':
+          description: PDF URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pdf_url: { type: string }
+
+  /api/checkout/session:
+    post:
+      summary: Create Stripe checkout session (stub)
+      requestBody:
+        required: false
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /api/webhooks/stripe:
+    post:
+      summary: Stripe webhook (stub)
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+  /api/push/register:
+    post:
+      summary: Register device token (stub)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRegisterRequest'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StandardResponse'
+
+components:
+  schemas:
+    IntakeRequest:
+      type: object
+      required: [name, email, days_per_week, session_length_minutes, equipment, goals]
+      properties:
+        name: { type: string }
+        email: { type: string }
+        age: { type: integer, nullable: true }
+        days_per_week: { type: integer }
+        session_length_minutes: { type: integer }
+        equipment:
+          type: array
+          items: { type: string }
+        constraints:
+          type: array
+          items: { type: string }
+        goals:
+          type: string
+          enum: [fat_loss, muscle_gain, strength, general_fitness]
+        experience:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        preferences:
+          type: object
+          additionalProperties: true
+
+    IntakeCreated:
+      type: object
+      properties:
+        intake_id: { type: string }
+
+    GeneratePlanRequest:
+      type: object
+      properties:
+        intake_id: { type: string }
+        intake_override:
+          $ref: '#/components/schemas/IntakeRequest'
+
+    PlanCreated:
+      type: object
+      properties:
+        plan_id: { type: string }
+
+    Plan:
+      type: object
+      properties:
+        plan_id: { type: string }
+        client_name: { type: string }
+        status: { type: string, enum: [draft, approved, sent] }
+        weeks:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanWeek'
+
+    PlanWeek:
+      type: object
+      properties:
+        week_number: { type: integer }
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanDay'
+
+    PlanDay:
+      type: object
+      properties:
+        day_number: { type: integer }
+        warmup: { type: array, items: { type: string } }
+        main_sets:
+          type: array
+          items:
+            type: object
+            properties:
+              exercise: { type: string }
+              sets: { type: integer }
+              reps: { type: string }
+              rpe: { type: string }
+        accessories: { type: array, items: { type: string } }
+        notes: { type: string }
+
+    PushRegisterRequest:
+      type: object
+      properties:
+        platform: { type: string, enum: [ios, android, web] }
+        token: { type: string }
+
+    StandardResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        message: { type: string }
