@@ -16,7 +16,6 @@
     "@vitejs/plugin-vue": "^5.4.0"
   },
   "scripts": { 
-    "build": "vite build" },
-  }
+    "build": "vite build" }
 
 
