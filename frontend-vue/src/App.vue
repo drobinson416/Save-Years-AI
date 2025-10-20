@@ -1,7 +1,6 @@
 <template>
   <main style="max-width:900px;margin:24px auto;font-family:Inter,system-ui">
     <h1>SaveYears Coach</h1>
-    <p style="color:#666">Intake → Generate → View Plan (talking to your live API)</p>
 
     <form class="card" @submit.prevent="onSubmit">
       <label>Name<br /><input v-model="form.name" required /></label><br /><br />
