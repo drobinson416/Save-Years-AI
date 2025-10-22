@@ -1,22 +1,36 @@
 import os
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
 from datetime import datetime
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+# Create the app first (after imports)
 app = FastAPI(title="SaveYears AI Coach (MVP Defaults)")
 
+# --- CORS configuration ---
+# Exact prod origin (NO trailing slash)
 prod_origin = (os.getenv("WEB_ORIGIN") or "").strip().rstrip("/")
 
+# Optional comma-separated dev/preview origins
 devs = os.getenv("DEV_ORIGINS", "")
 dev_origins = [o.strip().rstrip("/") for o in devs.split(",") if o.strip()]
 
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+allow_origins = [o for o in [prod_origin, *dev_origins] if o]
+if not allow_origins:
+    # sensible defaults for local dev if envs not set
+    allow_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],          # includes OPTIONS
+    allow_headers=["*"],
+    max_age=86400,
+)
 
 # --- In-memory "DB" for quick start ---
 DB_CLIENTS: Dict[str, Dict[str, Any]] = {}
@@ -38,6 +52,11 @@ class IntakeRequest(BaseModel):
 
 class IntakeCreated(BaseModel):
     intake_id: str
+
+class GeneratePlanRequest(BaseModel):
+    intake_id: Optional[str] = None
+    intake_override: Optional[IntakeRequest] = None
+
 
 class GeneratePlanRequest(BaseModel):
     intake_id: Optional[str] = None
