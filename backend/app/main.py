@@ -188,7 +188,7 @@ def push_register(req: PushRegisterRequest):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=allow_origin,
     allow_credentials=True,
     allow_methods=["*"],    # or ["POST","GET","OPTIONS"]
     allow_headers=["*"],    # or ["Content-Type","Authorization"]
