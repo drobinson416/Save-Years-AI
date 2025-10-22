@@ -1,5 +1,3 @@
-app = FastAPI(title="SaveYears AI Coach (MVP Defaults)")
-
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +5,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
 from datetime import datetime
+
+app = FastAPI(title="SaveYears AI Coach (MVP Defaults)")
+
+prod_origin = (os.getenv("WEB_ORIGIN") or "").strip().rstrip("/")
+
+devs = os.getenv("DEV_ORIGINS", "")
+dev_origins = [o.strip().rstrip("/") for o in devs.split(",") if o.strip()]
 
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
