@@ -116,6 +116,115 @@ def choose_by_tags(pool: list[dict], include_tags: list[str], n: int, rng: rando
     n = min(max(1, n), len(base))
     return rng.sample(base, k=n)
 
+def _make_warmup(rng: random.Random, pool: list[dict]) -> list[str]:
+    choices = ["5 min easy cardio", "Dynamic leg swings", "Arm circles", "Hip openers", "Dead hang 30s", "Cat-cow x10"]
+    # add 1–2 movement-prep items from library (names only)
+    if pool:
+        ex_names = [ex["name"] for ex in rng.sample(pool, k=min(2, len(pool)))]
+        choices += ex_names
+    return rng.sample(choices, k=min(4, len(choices)))
+
+GOAL_TAGS = {
+    "strength":        [["squat","knee_dominant"], ["hinge"], ["push"], ["pull"]],
+    "muscle_gain":     [["push"], ["pull"], ["squat","knee_dominant"], ["hinge"]],
+    "fat_loss":        [["conditioning"], ["push"], ["pull"]],
+    "general_fitness": [["push"], ["pull"], ["squat","knee_dominant"], ["hinge"]],
+}
+
+def _make_main_sets(rng: random.Random, goal: str, pool: list[dict], vol_scale: float) -> list[dict]:
+    params = GOAL_PARAMS.get(goal, GOAL_PARAMS["general_fitness"])
+    base_sets = _rand_range(rng, params["sets"])
+    sets_count = max(2, min(6, round(base_sets * min(1.8, vol_scale))))
+    reps = _rand_range(rng, params["reps"])
+    rest = _rand_range(rng, params["rest_s"])
+
+    # pick 2–4 movements guided by goal tag groups
+    n_lifts = max(2, min(4, round(2 * vol_scale)))
+    tag_groups = GOAL_TAGS.get(goal, GOAL_TAGS["general_fitness"])
+    picks: list[dict] = []
+    for tg in tag_groups:
+        picks += choose_by_tags(pool, tg, 1, rng)
+        if len(picks) >= n_lifts: break
+    # top up randomly if needed
+    remaining = [ex for ex in pool if ex not in picks]
+    if remaining and len(picks) < n_lifts:
+        picks += rng.sample(remaining, k=min(n_lifts - len(picks), len(remaining)))
+
+    out = []
+    for ex in picks[:n_lifts]:
+        out.append({
+            "exercise_id": ex["id"],
+            "exercise": ex["name"],
+            "sets": sets_count,
+            "reps": reps if isinstance(reps, int) else f"{params['reps'][0]}–{params['reps'][1]}",
+            "tempo": None,
+            "rest": f"{rest}s",
+            "meta": {
+                "description": ex.get("description"),
+                "video": ex.get("video"),       # could be {"type":"youtube","id":"..."} or a URL later
+                "poster": ex.get("poster"),
+                "equipment": ex.get("equipment"),
+                "primary_muscles": ex.get("primary_muscles"),
+                "secondary_muscles": ex.get("secondary_muscles"),
+                "cues": ex.get("cues"),
+                "tags": ex.get("tags"),
+                "level": ex.get("level"),
+            }
+        })
+    return out
+
+def _make_accessories(rng: random.Random, pool: list[dict], goal: str, vol_scale: float) -> list[str]:
+    n = max(2, min(6, round(3 * vol_scale)))
+    picks = rng.sample(pool, k=min(n, len(pool))) if pool else []
+    names = [p["name"] for p in picks]
+    if goal == "fat_loss":
+        names = (names + ["Farmer carries", "Core circuit 10 min"])[:n]
+    elif goal == "strength":
+        names = (names + ["Back extensions", "Face pulls"])[:n]
+    return names
+    
+def build_plan_from_intake(intake: Dict[str, Any], seed: int | None = None, weeks: int = 4) -> Dict[str, Any]:
+    rng = random.Random(seed or random.randint(1, 10_000_000))
+    goal = (intake.get("goals") or "general_fitness").strip().lower()
+    days = int(intake.get("days_per_week") or 3)
+    session_len = int(intake.get("session_length_minutes") or 45)
+    equipment = intake.get("equipment") or ["bodyweight_only"]
+
+    lib_pool = filter_by_equipment(equipment)
+    vol_scale = _volume_scale(days, session_len)
+
+    plan_weeks = []
+    for w in range(weeks):
+        week_rng = random.Random(rng.randint(1, 1_000_000))
+        warmup = _make_warmup(week_rng, lib_pool)
+        main = _make_main_sets(week_rng, goal, lib_pool, vol_scale)
+        acc = _make_accessories(week_rng, lib_pool, goal, vol_scale)
+        note_bits = [
+            f"Goal: {goal.replace('_',' ')}",
+            f"Days/wk: {days}, Session: {session_len} min",
+            "RPE: 1–3 RIR on last set. Progress 2–5% load or 1–2 reps weekly.",
+        ]
+        plan_weeks.append({
+            "title": f"Week {w+1}",
+            "warmup": warmup,
+            "main_sets": main,
+            "accessories": acc,
+            "notes": " | ".join(note_bits),
+        })
+
+    return {
+        "plan_id": str(uuid4()),
+        "status": "draft",
+        "weeks": plan_weeks,
+        "generated_from": {
+            "days_per_week": days,
+            "session_length_minutes": session_len,
+            "equipment": equipment,
+            "goals": goal,
+        }
+    }
+
+
 # --- Routes ---
 @app.post("/api/intake", response_model=IntakeCreated)
 def create_intake(payload: IntakeRequest):
