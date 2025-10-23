@@ -9,6 +9,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from math import ceil
 
 # Create the app first (after imports)
 app = FastAPI(title="SaveYears AI Coach (MVP Defaults)")
