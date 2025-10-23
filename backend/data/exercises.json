@@ -1,0 +1,80 @@
+[
+  {
+    "id": "push_ups",
+    "name": "Push-ups",
+    "equipment": ["bodyweight"],
+    "tags": ["push", "horizontal", "compound"],
+    "primary_muscles": ["chest"],
+    "secondary_muscles": ["triceps", "shoulders"],
+    "level": "beginner",
+    "description": "From a high plank, lower chest to within an inch of floor. Keep ribs down, elbows ~45°. Press back up.",
+    "cues": ["Wrists under shoulders", "Brace core", "Full range"],
+    "video": null,
+    "poster": null
+  },
+  {
+    "id": "air_squat",
+    "name": "Air Squat",
+    "equipment": ["bodyweight"],
+    "tags": ["squat", "knee_dominant"],
+    "primary_muscles": ["quads"],
+    "secondary_muscles": ["glutes", "hamstrings"],
+    "level": "beginner",
+    "description": "Feet shoulder-width, sit hips back and down, knees track over toes. Stand tall.",
+    "cues": ["Chest up", "Full foot contact"],
+    "video": null,
+    "poster": null
+  },
+  {
+    "id": "db_bench_press",
+    "name": "Dumbbell Bench Press",
+    "equipment": ["dumbbells"],
+    "tags": ["push", "horizontal", "compound"],
+    "primary_muscles": ["chest"],
+    "secondary_muscles": ["triceps", "shoulders"],
+    "level": "beginner",
+    "description": "On a bench, lower DBs to mid-chest with forearms vertical; press up and slightly in.",
+    "cues": ["Scaps set", "Wrists neutral"],
+    "video": null,
+    "poster": null
+  },
+  {
+    "id": "db_row",
+    "name": "Dumbbell Row",
+    "equipment": ["dumbbells"],
+    "tags": ["pull", "horizontal", "compound"],
+    "primary_muscles": ["lats"],
+    "secondary_muscles": ["biceps", "rear_delts"],
+    "level": "beginner",
+    "description": "Hinge at hips, pull DB to hip without rotating torso. Squeeze back; control down.",
+    "cues": ["Shoulder blades down & back"],
+    "video": null,
+    "poster": null
+  },
+  {
+    "id": "kb_swing",
+    "name": "Kettlebell Swing",
+    "equipment": ["kettlebells"],
+    "tags": ["hinge", "conditioning"],
+    "primary_muscles": ["glutes", "hamstrings"],
+    "secondary_muscles": ["back"],
+    "level": "intermediate",
+    "description": "Hinge, hike KB, snap hips to chest height. Don’t squat the swing.",
+    "cues": ["Hinge not squat", "Neutral spine"],
+    "video": null,
+    "poster": null
+  },
+  {
+    "id": "band_row",
+    "name": "Band Row",
+    "equipment": ["bands"],
+    "tags": ["pull", "horizontal"],
+    "primary_muscles": ["mid_back"],
+    "secondary_muscles": ["biceps", "rear_delts"],
+    "level": "beginner",
+    "description": "Anchor band at chest height. Row handles to ribs; control the return.",
+    "cues": ["Elbows to ribs", "Don’t shrug"],
+    "video": null,
+    "poster": null
+  }
+]
