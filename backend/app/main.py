@@ -118,6 +118,65 @@ def choose_by_tags(pool: list[dict], include_tags: list[str], n: int, rng: rando
     n = min(max(1, n), len(base))
     return rng.sample(base, k=n)
 
+# Pools by equipment
+EX_POOL = {
+    "bodyweight": [
+        "Push-ups", "Squats", "Reverse lunges", "Hip hinges", "Glute bridges",
+        "Plank", "Side plank", "Bird-dog", "Mountain climbers", "Burpees"
+    ],
+    "dumbbells": [
+        "DB bench press", "DB incline press", "DB rows", "DB RDL", "DB goblet squat",
+        "DB split squat", "DB shoulder press", "DB lateral raise", "DB curl", "DB triceps extension"
+    ],
+    "kettlebells": [
+        "KB swing", "KB goblet squat", "KB clean", "KB press", "KB snatch", "KB row"
+    ],
+    "bands": [
+        "Band rows", "Band pull-aparts", "Band face pulls", "Band RDL", "Band good mornings",
+        "Band chest press", "Band walks"
+    ],
+}
+
+# Main lift candidates by goal
+GOAL_MAIN = {
+    "strength": ["Back squat", "Front squat", "Bench press", "Deadlift", "Overhead press", "Weighted pull-ups"],
+    "muscle_gain": ["DB bench press", "Incline press", "Bent-over row", "Leg press", "Hack squat", "Romanian deadlift"],
+    "fat_loss": ["KB swing", "Goblet squat", "DB thruster", "Rowing machine", "Bike sprints"],
+    "general_fitness": ["Goblet squat", "DB bench press", "DB row", "Hip hinge pattern", "Overhead press"],
+}
+
+# Rep/rest guidance by goal
+GOAL_PARAMS = {
+    "strength":      {"reps": (3,5),   "sets": (3,5), "rest_s": (120,180)},
+    "muscle_gain":   {"reps": (8,12),  "sets": (3,4), "rest_s": (60,90)},
+    "fat_loss":      {"reps": (12,20), "sets": (2,4), "rest_s": (30,60)},
+    "general_fitness":{"reps": (8,12), "sets": (3,4), "rest_s": (60,90)},
+}
+
+def _choose_equipment_pool(equipment: list[str]) -> list[str]:
+    pool = []
+    eq = set(equipment or [])
+    if "bodyweight_only" in eq or not eq:
+        pool += EX_POOL["bodyweight"]
+    if "dumbbells" in eq:
+        pool += EX_POOL["dumbbells"]
+    if "kettlebells" in eq:
+        pool += EX_POOL["kettlebells"]
+    if "bands" in eq:
+        pool += EX_POOL["bands"]
+    # ensure uniqueness
+    return sorted(set(pool))
+
+def _rand_range(rng: random.Random, lo_hi: tuple[int,int]) -> int:
+    lo, hi = lo_hi
+    return rng.randint(lo, hi)
+
+def _volume_scale(days_per_week: int, session_len_min: int) -> float:
+    # baseline = 3 days x 45 minutes
+    d = max(1, min(6, int(days_per_week or 3)))
+    s = max(20, min(120, int(session_len_min or 45)))
+    return (d / 3.0) * (s / 45.0)
+
 def _make_warmup(rng: random.Random, pool: list[dict]) -> list[str]:
     choices = ["5 min easy cardio", "Dynamic leg swings", "Arm circles", "Hip openers", "Dead hang 30s", "Cat-cow x10"]
     # add 1–2 movement-prep items from library (names only)
