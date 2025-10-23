@@ -1,8 +1,10 @@
 import os
+import hashlib, json
+from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
 from datetime import datetime
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -36,6 +38,8 @@ app.add_middleware(
 DB_CLIENTS: Dict[str, Dict[str, Any]] = {}
 DB_INTAKES: Dict[str, Dict[str, Any]] = {}
 DB_PLANS: Dict[str, Dict[str, Any]] = {}
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+EXERCISES_PATH = DATA_DIR / "exercises.json"
 
 # --- Schemas ---
 class IntakeRequest(BaseModel):
@@ -83,25 +87,34 @@ class StandardResponse(BaseModel):
     ok: bool = True
     message: str = "ok"
 
-# --- Helpers ---
-def dummy_plan(client_name: str, days_per_week: int, session_len: int) -> Dict[str, Any]:
-    weeks = []
-    for w in range(1, 5):
-        days = []
-        for d in range(1, min(days_per_week, 6) + 1):
-            days.append({
-                "day_number": d,
-                "warmup": ["5 min easy cardio", "World’s Greatest Stretch x 5/side"],
-                "main_sets": [
-                    {"exercise": "Goblet Squat", "sets": 4, "reps": "8–10", "rpe": "7"},
-                    {"exercise": "DB Bench Press", "sets": 4, "reps": "8–10", "rpe": "7"},
-                    {"exercise": "1-Arm DB Row", "sets": 3, "reps": "10/side", "rpe": "7"},
-                ],
-                "accessories": ["Side Plank 3x30s/side", "Face Pull 3x12"],
-                "notes": f"Stay within {session_len} min. Control tempo, breathe."
-            })
-        weeks.append({"week_number": w, "days": days})
-    return {"weeks": weeks}
+
+@lru_cache(maxsize=1)
+def load_exercises() -> dict[str, dict]:
+    """Load exercise library once; return dict keyed by id."""
+    if not EXERCISES_PATH.exists():
+        return {}
+    with EXERCISES_PATH.open("r", encoding="utf-8") as f:
+        items = json.load(f)
+    by_id = {item["id"]: item for item in items}
+    return by_id
+
+def filter_by_equipment(equipment: list[str]) -> list[dict]:
+    lib = load_exercises()
+    eq = set(equipment or [])
+    # map intake's 'bodyweight_only' to library's 'bodyweight'
+    if "bodyweight_only" in eq:
+        eq.discard("bodyweight_only")
+        eq.add("bodyweight")
+    if not eq:
+        eq.add("bodyweight")
+    return [ex for ex in lib.values() if eq.intersection(ex.get("equipment", []))]
+
+def choose_by_tags(pool: list[dict], include_tags: list[str], n: int, rng: random.Random) -> list[dict]:
+    if not pool: return []
+    incl = [ex for ex in pool if set(include_tags).intersection(ex.get("tags", []))]
+    base = incl if incl else pool
+    n = min(max(1, n), len(base))
+    return rng.sample(base, k=n)
 
 # --- Routes ---
 @app.post("/api/intake", response_model=IntakeCreated)
@@ -122,29 +135,18 @@ def create_intake(payload: IntakeRequest):
 
 @app.post("/api/generate-plan")
 def generate_plan(req: GeneratePlanRequest):
-    # pick intake data
+    # locate intake (by id or inline override)
     if req.intake_override:
-        intake = req.intake_override
-        client_name = intake.name
-        days = intake.days_per_week
-        sess = intake.session_length_minutes
+        intake = req.intake_override.model_dump()
     elif req.intake_id and req.intake_id in DB_INTAKES:
-        raw = DB_INTAKES[req.intake_id]["answers"]
-        intake = IntakeRequest(**raw)
-        client_name = intake.name
-        days = intake.days_per_week
-        sess = intake.session_length_minutes
+        intake = DB_INTAKES[req.intake_id]
     else:
-        raise HTTPException(status_code=400, detail="No valid intake provided")
+        raise HTTPException(status_code=400, detail="No intake provided")
 
-    # build dummy plan (replace with AI later)
-    plan_id = str(uuid4())
-    plan = {
-        "plan_id": plan_id,
-        "client_name": client_name,
-        "status": "draft",
-        **dummy_plan(client_name, days, sess)
-    }
+    # generate a fresh plan using intake parameters (+ randomness)
+    plan = build_plan_from_intake(intake)
+
+    plan_id = plan["plan_id"]
     DB_PLANS[plan_id] = plan
     return {"plan_id": plan_id}
 
