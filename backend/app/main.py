@@ -36,10 +36,6 @@ app.add_middleware(
     max_age=86400,
 )
 
-# --- In-memory "DB" for quick start ---
-DB_CLIENTS: Dict[str, Dict[str, Any]] = {}
-DB_INTAKES: Dict[str, Dict[str, Any]] = {}
-DB_PLANS: Dict[str, Dict[str, Any]] = {}
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 EXERCISES_PATH = DATA_DIR / "exercises.json"
 
@@ -118,32 +114,7 @@ def choose_by_tags(pool: list[dict], include_tags: list[str], n: int, rng: rando
     n = min(max(1, n), len(base))
     return rng.sample(base, k=n)
 
-# Pools by equipment
-EX_POOL = {
-    "bodyweight": [
-        "Push-ups", "Squats", "Reverse lunges", "Hip hinges", "Glute bridges",
-        "Plank", "Side plank", "Bird-dog", "Mountain climbers", "Burpees"
-    ],
-    "dumbbells": [
-        "DB bench press", "DB incline press", "DB rows", "DB RDL", "DB goblet squat",
-        "DB split squat", "DB shoulder press", "DB lateral raise", "DB curl", "DB triceps extension"
-    ],
-    "kettlebells": [
-        "KB swing", "KB goblet squat", "KB clean", "KB press", "KB snatch", "KB row"
-    ],
-    "bands": [
-        "Band rows", "Band pull-aparts", "Band face pulls", "Band RDL", "Band good mornings",
-        "Band chest press", "Band walks"
-    ],
-}
 
-# Main lift candidates by goal
-GOAL_MAIN = {
-    "strength": ["Back squat", "Front squat", "Bench press", "Deadlift", "Overhead press", "Weighted pull-ups"],
-    "muscle_gain": ["DB bench press", "Incline press", "Bent-over row", "Leg press", "Hack squat", "Romanian deadlift"],
-    "fat_loss": ["KB swing", "Goblet squat", "DB thruster", "Rowing machine", "Bike sprints"],
-    "general_fitness": ["Goblet squat", "DB bench press", "DB row", "Hip hinge pattern", "Overhead press"],
-}
 
 # Rep/rest guidance by goal
 GOAL_PARAMS = {
@@ -153,19 +124,7 @@ GOAL_PARAMS = {
     "general_fitness":{"reps": (8,12), "sets": (3,4), "rest_s": (60,90)},
 }
 
-def _choose_equipment_pool(equipment: list[str]) -> list[str]:
-    pool = []
-    eq = set(equipment or [])
-    if "bodyweight_only" in eq or not eq:
-        pool += EX_POOL["bodyweight"]
-    if "dumbbells" in eq:
-        pool += EX_POOL["dumbbells"]
-    if "kettlebells" in eq:
-        pool += EX_POOL["kettlebells"]
-    if "bands" in eq:
-        pool += EX_POOL["bands"]
-    # ensure uniqueness
-    return sorted(set(pool))
+
 
 def _rand_range(rng: random.Random, lo_hi: tuple[int,int]) -> int:
     lo, hi = lo_hi
@@ -251,15 +210,15 @@ def build_plan_from_intake(intake: Dict[str, Any], seed: int | None = None, week
     session_len = int(intake.get("session_length_minutes") or 45)
     equipment = intake.get("equipment") or ["bodyweight_only"]
 
-    lib_pool = filter_by_equipment(equipment)
+    pool = filter_by_equipment(equipment)
     vol_scale = _volume_scale(days, session_len)
 
     plan_weeks = []
     for w in range(weeks):
         week_rng = random.Random(rng.randint(1, 1_000_000))
-        warmup = _make_warmup(week_rng, lib_pool)
-        main = _make_main_sets(week_rng, goal, lib_pool, vol_scale)
-        acc = _make_accessories(week_rng, lib_pool, goal, vol_scale)
+        warmup = _make_warmup(week_rng, pool)
+        main = _make_main_sets(week_rng, goal, pool, vol_scale)
+        acc = _make_accessories(week_rng, pool, goal, vol_scale)
         note_bits = [
             f"Goal: {goal.replace('_',' ')}",
             f"Days/wk: {days}, Session: {session_len} min",
