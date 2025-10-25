@@ -1,25 +1,13 @@
-const API = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-
+const API = ""; // same-origin
 async function jsonFetch(url, options = {}) {
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${text}`);
-  }
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
+export const createIntake = (p) => jsonFetch(`/api/intake`, { method: "POST", body: JSON.stringify(p) });
+export const generatePlanByIntakeId = (id) => jsonFetch(`/api/generate-plan`, { method: "POST", body: JSON.stringify({ intake_id: id }) });
+export const getPlan = (id) => jsonFetch(`/api/plans/${id}`);
 
-export async function createIntake(payload) {
-  return jsonFetch(`${API}/api/intake`, { method: "POST", body: JSON.stringify(payload) });
-}
-
-export async function generatePlanByIntakeId(intake_id) {
-  return jsonFetch(`${API}/api/generate-plan`, { method: "POST", body: JSON.stringify({ intake_id }) });
-}
-
-export async function getPlan(plan_id) {
-  return jsonFetch(`${API}/api/plans/${plan_id}`);
-}
