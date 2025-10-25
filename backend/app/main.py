@@ -244,22 +244,14 @@ def build_plan_from_intake(intake: Dict[str, Any], seed: int | None = None, week
         }
     }
 
-
+def model_to_dict(m):
+    return m.model_dump() if hasattr(m, "model_dump") else m.dict()
+    
 # --- Routes ---
 @app.post("/api/intake", response_model=IntakeCreated)
 def create_intake(payload: IntakeRequest):
-    # create client if missing
-    client_id = None
-    for cid, c in DB_CLIENTS.items():
-        if c["email"].lower() == payload.email.lower():
-            client_id = cid
-            break
-    if client_id is None:
-        client_id = str(uuid4())
-        DB_CLIENTS[client_id] = {"id": client_id, "name": payload.name, "email": payload.email, "created_at": datetime.utcnow().isoformat()}
-
     intake_id = str(uuid4())
-    DB_INTAKES[intake_id] = {"id": intake_id, "client_id": client_id, "answers": payload.model_dump(), "created_at": datetime.utcnow().isoformat()}
+    DB_INTAKES[intake_id] = model_to_dict(req)
     return {"intake_id": intake_id}
 
 @app.post("/api/generate-plan")
