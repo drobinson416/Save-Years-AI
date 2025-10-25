@@ -1,6 +1,8 @@
 import os
 import hashlib, json
 import random
+import sys, traceback, logging
+from pydantic import __version__ as PYD_VERSION
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -246,6 +248,10 @@ def build_plan_from_intake(intake: Dict[str, Any], seed: int | None = None, week
 
 def model_to_dict(m):
     return m.model_dump() if hasattr(m, "model_dump") else m.dict()
+
+logger = logging.getLogger("uvicorn.error")  # Render shows this
+def _log_exc(msg="Unhandled exception"):
+    logger.error(msg + "\n" + traceback.format_exc())
     
 # --- Routes ---
 @app.post("/api/intake", response_model=IntakeCreated)
@@ -270,6 +276,24 @@ def generate_plan(req: GeneratePlanRequest):
     plan_id = plan["plan_id"]
     DB_PLANS[plan_id] = plan
     return {"plan_id": plan_id}
+
+@app.get("/_diag")
+def diag():
+    count = 0
+    try:
+        if EXERCISES_PATH.exists():
+            with EXERCISES_PATH.open("r", encoding="utf-8") as f:
+                count = len(json.load(f))
+    except Exception:
+        _log_exc("Failed to read exercises.json")
+    return {
+        "python": sys.version,
+        "pydantic": PYD_VERSION,
+        "exercises_path": str(EXERCISES_PATH),
+        "exercises_exists": EXERCISES_PATH.exists(),
+        "exercises_count": count,
+        "cors_allow": getattr(app, "user_middleware", None) is not None,
+    }
 
 @app.get("/api/plans/{pid}", response_model=Plan)
 def get_plan(pid: str):
